@@ -91,14 +91,13 @@ namespace PuzzleBotUi
                 switch (name) {
                     case "MachineHostName": return (T)(object)"192.168.1.74";
                     case "MachinePort": return (T)(object)2000;
+                    case "MaxX": return (T)(object)595;
+                    case "MaxY": return (T)(object)360;
+                    case "MaxZ": return (T)(object)30;
+                    case "MaxA": return (T)(object)360;
                     default: return default(T);
                 }
             }
-        }
-
-        public object GetParam(string name)
-        {
-            return "";
         }
 
         public void SaveParam<T>(string name, T val)

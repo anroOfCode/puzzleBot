@@ -1,16 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace PuzzleBot.Control
+﻿namespace PuzzleBot.Control
 {
     public static class Utils
     {
-        public static bool IsFinite(double val)
+        public static bool IsFinite(this double val)
         {
             return !double.IsInfinity(val) && !double.IsNaN(val);
+        }
+
+        public static bool IsFinite(this Coord val)
+        {
+            return
+                val.X.IsFinite() &&
+                val.Y.IsFinite() &&
+                val.Z.IsFinite() &&
+                val.A.IsFinite();
         }
     }
 }

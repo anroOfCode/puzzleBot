@@ -20,7 +20,6 @@ namespace PuzzleBot.Control
         private readonly Action<string> _onLine;
         private readonly Thread _readerThread;
 
-        // Default port 2000
         public NetworkSerialClient(string host, int port, Action<string> onLine)
         {
             Contract.Assert(!string.IsNullOrWhiteSpace(host));
@@ -37,6 +36,7 @@ namespace PuzzleBot.Control
 
         public void WriteLine(string msg)
         {
+            Contract.Assert(!string.IsNullOrWhiteSpace(msg));
             _writer.Write(msg);
             _writer.Write("\n");
             _writer.Flush();

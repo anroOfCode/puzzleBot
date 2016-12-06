@@ -56,44 +56,44 @@ namespace PuzzleBot.Control
             machine.MoveTo(CoordCmd.SetPosition(null, null, null, machine.Min.A), false);
         }
 
-        public static void NudgeLeft(this CncMachine machine)
+        public static void NudgeLeft(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(-nudge, null, null, null));
         }
 
-        public static void NudgeRight(this CncMachine machine)
+        public static void NudgeRight(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(nudge, null, null, null));
         }
 
-        public static void NudgeTop(this CncMachine machine)
+        public static void NudgeTop(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(null, nudge, null, null));
         }
 
-        public static void NudgeBottom(this CncMachine machine)
+        public static void NudgeBottom(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(null, -nudge, null, null));
         }
 
-        public static void NudgeUp(this CncMachine machine)
+        public static void NudgeUp(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(null, null, nudge, null));
         }
 
-        public static void NudgeDown(this CncMachine machine)
+        public static void NudgeDown(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(null, null, -nudge, null));
         }
 
-        public static void NudgeCw(this CncMachine machine)
+        public static void NudgeCw(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(null, null, null, nudge));
         }
 
-        public static void NudgeCcw(this CncMachine machine)
+        public static void NudgeCcw(this CncMachine machine, double nudge)
         {
-
+            machine.MoveTo(CoordCmd.IncrementalMove(null, null, null, -nudge));
         }
 
         public static void StopJog(this CncMachine machine)
