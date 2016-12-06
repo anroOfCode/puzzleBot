@@ -39,6 +39,7 @@ namespace PuzzleBot.Control
         {
             _writer.Write(msg);
             _writer.Write("\n");
+            _writer.Flush();
         }
 
         public void Dispose()
@@ -50,6 +51,7 @@ namespace PuzzleBot.Control
         {
             while (true) {
                 var line = _reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(line)) continue;
                 _onLine(line);
             }
         }

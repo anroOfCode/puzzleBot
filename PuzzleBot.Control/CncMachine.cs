@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PuzzleBot.Control
@@ -80,13 +81,26 @@ namespace PuzzleBot.Control
             Contract.Assert(host != null);
             _host = host;
 
-            _host.GetParam<string>("MachineHostName");
+            _client = new NetworkSerialClient(
+                _host.GetParam<string>("MachineHostName"),
+                _host.GetParam<int>("MachinePort"),
+                OnMsg
+             );
+
+            _coordSystem = new IdentityTranslator(
+                new MachineCoordSystem(
+                    new Coord(0, 0, 0, 0), new Coord(595, 360, 30, 360)));
+
+            RequestStatus();
         }
 
         public void PerformMechanicalHome()
         {
-            // 1. Send G28.2 X0 Y0 Z0
-            // 2. Wait for homing to complete
+            var j = new JObject();
+            j["gc"] = "G28.2 X0 Y0 Z0";
+            RawSend(j);
+            WaitForMovement();
+            WaitForIdle();
         }
 
         public void PerformOpticalHome()
@@ -140,31 +154,56 @@ namespace PuzzleBot.Control
 
         private void RawSend(JObject msg)
         {
-
+            _client.WriteLine(msg.ToString(Formatting.None));
         }
 
         private void RawSend(string msg)
         {
-
+            _client.WriteLine(msg);
         }
 
         private void OnMsg(string msg)
         {
+            _host.WriteLogMessage("CncMachine", msg);
+            try {
+                var obj = JObject.Parse(msg);
+                if (obj["sr"] != null) {
+                    var status = (MachineStatus)obj["sr"]["stat"].Value<int>();
+                    if (status != _lastStatus) {
+                        _host.WriteLogMessage("CncMachine", $"Transitioned from {_lastStatus} to {status}.");
+                        _lastStatus = status;
+                    }
+                }
+            }
+            catch {
+                _host.WriteLogMessage("CncMachine", "Unable to parse log message.");
+            }
+        }
 
+        private void RequestStatus()
+        {
+            var j = new JObject();
+            j["sr"] = null;
+            RawSend(j);
+        }
+
+        private void WaitForMovement()
+        {
+            while (IsIdle) Thread.Sleep(10);
         }
 
         private void WaitForIdle()
         {
-
+            while (!IsIdle) Thread.Sleep(10);
         }
     }
 
     public enum MachineStatus
     {
         Initializing = 0,
-        Ready = 1,
+        Ready = 1, // After boot this will be the status.
         Alarm = 2,
-        Stop = 3,
+        Stop = 3, // After running a command
         ProgEnd = 4,
         Run = 5,
         Hold = 6,

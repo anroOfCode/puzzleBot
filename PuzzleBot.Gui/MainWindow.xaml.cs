@@ -87,8 +87,18 @@ namespace PuzzleBotUi
         {
             if (_settings[name] != null)
                 return _settings[name].Value<T>();
-            else
-                return default(T);
+            else {
+                switch (name) {
+                    case "MachineHostName": return (T)(object)"192.168.1.74";
+                    case "MachinePort": return (T)(object)2000;
+                    default: return default(T);
+                }
+            }
+        }
+
+        public object GetParam(string name)
+        {
+            return "";
         }
 
         public void SaveParam<T>(string name, T val)
@@ -110,6 +120,8 @@ namespace PuzzleBotUi
         {
             InitializeComponent();
 
+            _host = new Host("params.json", WriteLogMessage);
+            _machine = new CncMachine(_host);
 
             MJPEGStream stream = new MJPEGStream("http://192.168.1.74:8081/?action=stream");
             stream.NewFrame += Stream_NewFrame;
@@ -123,15 +135,21 @@ namespace PuzzleBotUi
             new KeyWatcher(this, Key.D, false, () => _machine.StartJogDown(), () => _machine.StopJog());
             new KeyWatcher(this, Key.L, false, () => _machine.StartJogCcw(), () => _machine.StopJog());
             new KeyWatcher(this, Key.R, false, () => _machine.StartJogCw(), () => _machine.StopJog());
+            new KeyWatcher(this, Key.H, false, () => _machine.PerformMechanicalHome(), null);
+
+            new KeyWatcher(this, Key.P, false, () => _machine.TurnPumpOn(), null);
+            new KeyWatcher(this, Key.O, false, () => _machine.TurnPumpOff(), null);
 
             //new KeyWatcher(this, Key.Up, true, () => _machine.StartJogTop(), () => _machine.StopJog());
         }
 
         private void WriteLogMessage(string source, string msg)
         {
-            consoleOutput.Items.Add($"[{DateTime.Now:HH:mm:ss.fff}][{source}]: {msg}");
-            if (consoleOutput.Items.Count > 10000) consoleOutput.Items.RemoveAt(0);
-            consoleOutput.ScrollIntoView(consoleOutput.Items.GetItemAt(consoleOutput.Items.Count - 1));
+            Dispatcher.BeginInvoke((Action)(() => {
+                consoleOutput.Items.Add($"[{DateTime.Now:HH:mm:ss.fff}][{source}]: {msg}");
+                if (consoleOutput.Items.Count > 10000) consoleOutput.Items.RemoveAt(0);
+                consoleOutput.ScrollIntoView(consoleOutput.Items.GetItemAt(consoleOutput.Items.Count - 1));
+            }));
         }
 
         private void MainWindow_KeyUp(object sender, KeyEventArgs e)
