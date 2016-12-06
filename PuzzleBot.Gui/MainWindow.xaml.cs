@@ -55,7 +55,7 @@ namespace PuzzleBotUi
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
             if (_state == true) return;
-            if (e.Key == _key && (!_alt || Keyboard.IsKeyDown(Key.LeftAlt))) {
+            if (e.Key == _key && (_alt == Keyboard.IsKeyDown(Key.LeftCtrl))) {
                 _state = true;
                 _onDown?.Invoke();
             }
@@ -91,10 +91,14 @@ namespace PuzzleBotUi
                 switch (name) {
                     case "MachineHostName": return (T)(object)"192.168.1.74";
                     case "MachinePort": return (T)(object)2000;
-                    case "MaxX": return (T)(object)595;
-                    case "MaxY": return (T)(object)360;
-                    case "MaxZ": return (T)(object)30;
-                    case "MaxA": return (T)(object)360;
+                    case "MaxX": return (T)(object)595.0;
+                    case "MaxY": return (T)(object)360.0;
+                    case "MaxZ": return (T)(object)30.0;
+                    case "MaxA": return (T)(object)360.0;
+                    case "NudgeX": return (T)(object)0.2;
+                    case "NudgeY": return (T)(object)0.2;
+                    case "NudgeZ": return (T)(object)0.2;
+                    case "NudgeA": return (T)(object)1.0;
                     default: return default(T);
                 }
             }
@@ -127,19 +131,31 @@ namespace PuzzleBotUi
             stream.Start();
 
             new KeyWatcher(this, Key.Up, false, () => _machine.StartJogTop(), () => _machine.StopJog());
-            new KeyWatcher(this, Key.Down, false, () => _machine.StartJogDown(), () => _machine.StopJog());
+            new KeyWatcher(this, Key.Down, false, () => _machine.StartJogBottom(), () => _machine.StopJog());
             new KeyWatcher(this, Key.Left, false, () => _machine.StartJogLeft(), () => _machine.StopJog());
             new KeyWatcher(this, Key.Right, false, () => _machine.StartJogRight(), () => _machine.StopJog());
             new KeyWatcher(this, Key.U, false, () => _machine.StartJogUp(), () => _machine.StopJog());
             new KeyWatcher(this, Key.D, false, () => _machine.StartJogDown(), () => _machine.StopJog());
             new KeyWatcher(this, Key.L, false, () => _machine.StartJogCcw(), () => _machine.StopJog());
             new KeyWatcher(this, Key.R, false, () => _machine.StartJogCw(), () => _machine.StopJog());
+
+            new KeyWatcher(this, Key.Up, true, () => _machine.NudgeTop(_host.GetParam<double>("NudgeY")), null);
+            new KeyWatcher(this, Key.Down, true, () => _machine.NudgeBottom(_host.GetParam<double>("NudgeY")), null);
+            new KeyWatcher(this, Key.Left, true, () => _machine.NudgeLeft(_host.GetParam<double>("NudgeX")), null);
+            new KeyWatcher(this, Key.Right, true, () => _machine.NudgeRight(_host.GetParam<double>("NudgeX")), null);
+            new KeyWatcher(this, Key.U, true, () => _machine.NudgeUp(_host.GetParam<double>("NudgeZ")), null);
+            new KeyWatcher(this, Key.D, true, () => _machine.NudgeDown(_host.GetParam<double>("NudgeZ")), null);
+            new KeyWatcher(this, Key.L, true, () => _machine.NudgeCw(_host.GetParam<double>("NudgeA")), null);
+            new KeyWatcher(this, Key.R, true, () => _machine.NudgeCcw(_host.GetParam<double>("NudgeA")), null);
+
             new KeyWatcher(this, Key.H, false, () => _machine.PerformMechanicalHome(), null);
 
             new KeyWatcher(this, Key.P, false, () => _machine.TurnPumpOn(), null);
             new KeyWatcher(this, Key.O, false, () => _machine.TurnPumpOff(), null);
+            new KeyWatcher(this, Key.S, false, () => _machine.EngageSolenoid(), null);
+            new KeyWatcher(this, Key.A, false, () => _machine.DisengageSolenoid(), null);
 
-            //new KeyWatcher(this, Key.Up, true, () => _machine.StartJogTop(), () => _machine.StopJog());
+            new KeyWatcher(this, Key.Up, true, () => _machine.StartJogTop(), () => _machine.StopJog());
         }
 
         private void WriteLogMessage(string source, string msg)

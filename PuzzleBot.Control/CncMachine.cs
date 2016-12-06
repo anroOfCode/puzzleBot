@@ -105,11 +105,11 @@ namespace PuzzleBot.Control
 
             _coordSystem = new IdentityTranslator(
                 new MachineCoordSystem(
-                    new Coord(0, 0, 0, 0),
+                    new Coord(0, 0, -_host.GetParam<double>("MaxZ"), 0),
                     new Coord(
                         _host.GetParam<double>("MaxX"),
                         _host.GetParam<double>("MaxY"),
-                        _host.GetParam<double>("MaxZ"),
+                        0,
                         _host.GetParam<double>("MaxA")
                     )
                 )
@@ -143,7 +143,7 @@ namespace PuzzleBot.Control
 
             if (!IsIdle) throw new Exception();
 
-            Contract.Assert(!_srcPos.HasValue && !_dstPos.HasValue);
+            //Contract.Assert(!_srcPos.HasValue && !_dstPos.HasValue);
             _srcPos = _lkpos;
             _dstPos = FindNewCoord(cmd, _lkpos);
             if (!_coordSystem.BoundsCheck(_dstPos.Value)) {
@@ -166,7 +166,11 @@ namespace PuzzleBot.Control
             RawSend(j);
             WaitForMovement();
 
-            if (sync) WaitForIdle();
+            if (sync) {
+                WaitForIdle();
+                _dstPos = null;
+                _srcPos = null;
+            }
         }
 
         private static Coord FindNewCoord(CoordCmd cmd, Coord lk)
@@ -194,6 +198,8 @@ namespace PuzzleBot.Control
             if (!IsIdle) {
                 RawSend("!%");
                 WaitForIdle();
+                _dstPos = null;
+                _srcPos = null;
             }
         }
 
