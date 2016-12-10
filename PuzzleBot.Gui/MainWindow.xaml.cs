@@ -94,10 +94,13 @@ namespace PuzzleBotUi
                     case "MaxX": return (T)(object)595.0;
                     case "MaxY": return (T)(object)360.0;
                     case "MaxZ": return (T)(object)30.0;
-                    case "MaxA": return (T)(object)360.0;
+                    // 365 degrees max =)
+                    case "MaxA": return (T)(object)365.0;
+                    // 0.2mm nudge
                     case "NudgeX": return (T)(object)0.2;
                     case "NudgeY": return (T)(object)0.2;
                     case "NudgeZ": return (T)(object)0.2;
+                    // 1 degree nudge
                     case "NudgeA": return (T)(object)1.0;
                     default: return default(T);
                 }

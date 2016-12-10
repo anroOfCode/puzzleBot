@@ -75,10 +75,6 @@ namespace PuzzleBot.Control
         private ICoordTranslator _coordSystem;
         private Coord _lkpos;
 
-        private Coord? _srcPos;
-        private Coord? _dstPos;
-        private CoordCmd? _curCmd;
-
         private MachineStatus _lastStatus;
         private bool _homed;
         private bool _error;
@@ -90,7 +86,7 @@ namespace PuzzleBot.Control
         public Coord Max { get { return _coordSystem.Max; } }
         public Coord Min { get { return _coordSystem.Min; } }
 
-        private bool IsIdle { get { return _lastStatus == MachineStatus.Stop; } }
+        private bool IsIdle { get { return IsIdleState(_lastStatus); } }
 
         public CncMachine(IHost host)
         {
@@ -116,7 +112,7 @@ namespace PuzzleBot.Control
             );
 
             // We need to request status a few times when the TinyG controller first boots
-            // up for some reason.
+            // up for *some* reason.
             RequestStatus();
             RequestStatus();
             RequestStatus();
@@ -136,23 +132,25 @@ namespace PuzzleBot.Control
         public void MoveTo(CoordCmd cmd, bool sync = true)
         {
             ThrowIfError();
+
             if (!_homed) {
                 _host.WriteLogMessage(ComponentName, "MoveTo cancelled: machine not homed.");
                 throw new Exception();
             }
 
-            if (!IsIdle) throw new Exception();
+            if (!IsIdle) {
+                RequestStatus();
+                WaitForIdle();
+            }
 
-            //Contract.Assert(!_srcPos.HasValue && !_dstPos.HasValue);
-            _srcPos = _lkpos;
-            _dstPos = FindNewCoord(cmd, _lkpos);
-            if (!_coordSystem.BoundsCheck(_dstPos.Value)) {
+            var dstCoord = FindNewCoord(cmd, _lkpos);
+            if (!_coordSystem.BoundsCheck(dstCoord)) {
                 _host.WriteLogMessage(ComponentName, "MoveTo cancelled: failed bounds check.");
                 throw new Exception();
             }
 
             var cmdStr = "G0";
-            var machineDst = _coordSystem.ToInner(_dstPos.Value);
+            var machineDst = _coordSystem.ToInner(dstCoord);
 
             if (!machineDst.IsFinite()) throw new Exception();
 
@@ -163,13 +161,13 @@ namespace PuzzleBot.Control
 
             var j = new JObject();
             j["gc"] = cmdStr;
+
+            ResetWaiters();
             RawSend(j);
             WaitForMovement();
 
             if (sync) {
                 WaitForIdle();
-                _dstPos = null;
-                _srcPos = null;
             }
         }
 
@@ -198,8 +196,6 @@ namespace PuzzleBot.Control
             if (!IsIdle) {
                 RawSend("!%");
                 WaitForIdle();
-                _dstPos = null;
-                _srcPos = null;
             }
         }
 
@@ -278,6 +274,12 @@ namespace PuzzleBot.Control
 
                     if (status != _lastStatus) {
                         _host.WriteLogMessage("CncMachine", $"Transitioned from {_lastStatus} to {status}.");
+                        if (IsIdleState(_lastStatus) && IsMovementState(status)) {
+                            _transitionToMovement.Set();
+                        }
+                        else if (IsMovementState(_lastStatus) && IsIdleState(status)) {
+                            _transitionToIdle.Set();
+                        }
                         _lastStatus = status;
                     }
                 }
@@ -298,19 +300,56 @@ namespace PuzzleBot.Control
             RawSend(j);
         }
 
-        private void WaitForMovement()
+        private void ResetWaiters()
         {
-            while (IsIdle) Thread.Sleep(10);
+            _transitionToIdle.Reset();
+            _transitionToMovement.Reset();
         }
 
-        private void WaitForIdle()
+        private bool WaitForMovement()
         {
-            while (!IsIdle) Thread.Sleep(10);
+            return WaitForMovement(TimeSpan.FromSeconds(0.5));
+        }
+
+        private bool WaitForIdle()
+        {
+            return WaitForIdle(TimeSpan.FromSeconds(10.0));
+        }
+
+        private bool WaitForMovement(TimeSpan timeout)
+        {
+            if (!_transitionToMovement.WaitOne(timeout)) {
+                _host.WriteLogMessage(ComponentName, "Warning: WaitForMovement event never fired.");
+                return false;
+            }
+            return true;
+        }
+
+        private bool WaitForIdle(TimeSpan timeout)
+        {
+            if (!_transitionToIdle.WaitOne(timeout)) {
+                _host.WriteLogMessage(ComponentName, "Warning: WaitForIdle event never fired.");
+                return false;
+            }
+            return true;
         }
 
         private void ThrowIfError()
         {
             if (_error) throw new Exception();
+        }
+
+        private static bool IsMovementState(MachineStatus status)
+        {
+            return
+                status == MachineStatus.Homing ||
+                status == MachineStatus.Run ||
+                status == MachineStatus.Probe;
+        }
+
+        private static bool IsIdleState(MachineStatus status)
+        {
+            return status == MachineStatus.Stop || status == MachineStatus.Ready;
         }
     }
 }
