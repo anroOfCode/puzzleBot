@@ -11,11 +11,14 @@ namespace PuzzleBot.Console
         static void Main(string[] args)
         {
             var ce = new Control.OpenCV.CaptureEngine("http://localhost:8080/cam_1.cgi?.mjpg");
+            int i = 0;
             while (true) {
-                using (var mat = ce.GrabFrame())
-                    System.Console.WriteLine($"{mat.Columns} x {mat.Rows} mat.");
+                using (var mat = ce.TryGrabFrame())
+                    if (mat != null)
+                        System.Console.WriteLine($"{i++}: {mat.Columns} x {mat.Rows} mat.");
+                    else
+                        System.Console.WriteLine("No data.");
             }
-
             System.Console.ReadLine();
         }
     }

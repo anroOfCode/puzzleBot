@@ -24,7 +24,7 @@ namespace PuzzleBot.Control.OpenCV
         public static extern void CaptureEngine_Destroy(CaptureEngine handle);
 
         [DllImport(c_dllName)]
-        public static extern Mat CaptureEngine_GrabFrame(CaptureEngine handle);
+        public static extern bool CaptureEngine_TryGrabFrame(CaptureEngine handle, Mat* frame);
 
         [DllImport(c_dllName)]
         public static extern void Mat_Destroy(Mat handle);

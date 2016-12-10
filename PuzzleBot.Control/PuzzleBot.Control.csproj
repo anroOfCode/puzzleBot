@@ -64,7 +64,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CameraStream.cs" />
     <Compile Include="CncMachine.cs" />
     <Compile Include="CncMachineUtils.cs" />
     <Compile Include="CoordinateSystem.cs" />

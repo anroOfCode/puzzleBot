@@ -16,10 +16,16 @@ namespace PuzzleBot.Control.OpenCV
             _capturer = NativeMethods.CaptureEngine_Create(url);
         }
 
-        public Mat GrabFrame()
+        public Mat TryGrabFrame()
         {
-            var nmMat = NativeMethods.CaptureEngine_GrabFrame(_capturer);
-            return new Mat(nmMat);
+            unsafe
+            {
+                NativeMethods.Mat ret;
+                if (NativeMethods.CaptureEngine_TryGrabFrame(_capturer, &ret)) {
+                    return new Mat(ret);
+                }
+            }
+            return null;
         }
 
         ~CaptureEngine()

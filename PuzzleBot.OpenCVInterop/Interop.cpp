@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <memory>
+#include <chrono>
 
 #include <opencv2\core.hpp>
 #include <opencv2\videoio.hpp>
@@ -19,22 +20,27 @@ namespace PuzzleBot
     {
     public:
         OpenCvCaptureEngine(std::string captureUrl)
-            : m_capture(cv::String(captureUrl.c_str()))
+            : m_capture(captureUrl.c_str())
             , m_captureThread([this] { Capturer(); })
-            , m_frameGrabbed(true)
+            , m_frameGrabbed(false)
             , m_die(false)
+            , m_captureUrl(std::move(captureUrl))
         {}
 
         // Snaps a frame from the camera, if the last captured
         // frame has been grabbed this method blocks until a new
-        // frame is available.
-        std::unique_ptr<cv::Mat> GrabFrame()
+        // frame is available. If a new frame isn't available within
+        // 500ms, this method return false and an empty ptr.
+        std::pair<bool, std::unique_ptr<cv::Mat>> TryGrabFrame()
         {
             std::unique_lock<std::mutex> l(m_mutex);
-            m_newFrame.wait(l, [this] { return !m_frameGrabbed; });
-            m_frameGrabbed = true;
-            auto ret = std::make_unique<cv::Mat>(std::move(m_lastFrame));
-            return ret;
+            if (m_newFrame.wait_for(l, std::chrono::milliseconds(500), [this] { return m_frameGrabbed; })) {
+                m_frameGrabbed = false;
+                return std::make_pair(true, std::make_unique<cv::Mat>(std::move(m_lastFrame)));
+            }
+            else {
+                return { false, std::unique_ptr<cv::Mat>() };
+            }
         }
 
         ~OpenCvCaptureEngine()
@@ -54,15 +60,22 @@ namespace PuzzleBot
                 if (m_capture.read(frame)) {
                     std::unique_lock<std::mutex> l(m_mutex);
                     m_lastFrame = std::move(frame);
-                    m_frameGrabbed = false;
+                    m_frameGrabbed = true;
                     l.unlock();
                     m_newFrame.notify_one();
+                }
+                else {
+                    // We might have lost connectivity with the webcam... try to
+                    // recreate the capturer.
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    m_capture = cv::VideoCapture(m_captureUrl.c_str());
                 }
 
                 if (m_die) return;
             }
         }
 
+        std::string m_captureUrl;
         bool m_die;
         std::mutex m_mutex;
         std::condition_variable m_newFrame;
@@ -85,10 +98,11 @@ EXTERN_DLL_EXPORT void CaptureEngine_Destroy(void* handle)
     delete static_cast<PuzzleBot::OpenCvCaptureEngine*>(handle);
 }
 
-EXTERN_DLL_EXPORT void* CaptureEngine_GrabFrame(void* handle)
+EXTERN_DLL_EXPORT bool CaptureEngine_TryGrabFrame(void* handle, void** frame)
 {
-    auto frame = static_cast<PuzzleBot::OpenCvCaptureEngine*>(handle)->GrabFrame();
-    return frame.release();
+    auto result = static_cast<PuzzleBot::OpenCvCaptureEngine*>(handle)->TryGrabFrame();
+    *frame = result.second.release();
+    return result.first;
 }
 
 EXTERN_DLL_EXPORT void Mat_Destroy(void* handle)
