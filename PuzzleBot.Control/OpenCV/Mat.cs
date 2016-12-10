@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
 
 using System;
+using System.Diagnostics.Contracts;
 
 namespace PuzzleBot.Control.OpenCV
 {
@@ -9,7 +10,10 @@ namespace PuzzleBot.Control.OpenCV
     {
         public Mat(NativeMethods.Mat inner)
         {
+            Contract.Assert(inner.Handle != null);
             _mat = inner;
+            _memPressure = Rows * Columns * 3;
+            GC.AddMemoryPressure(_memPressure);
         }
 
         public byte* Data
@@ -51,10 +55,12 @@ namespace PuzzleBot.Control.OpenCV
         {
             if (_mat.Handle != null) {
                 NativeMethods.Mat_Destroy(_mat);
+                GC.RemoveMemoryPressure(_memPressure);
                 _mat.Handle = null;
             }
         }
 
         NativeMethods.Mat _mat;
+        long _memPressure;
     }
 }

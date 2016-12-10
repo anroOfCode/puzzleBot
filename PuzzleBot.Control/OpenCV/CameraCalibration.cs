@@ -19,7 +19,7 @@ namespace PuzzleBot.Control.OpenCV
         public float K_3;
     }
 
-    public sealed class CameraCalibration
+    public static class CameraCalibration
     {
     }
 }

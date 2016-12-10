@@ -20,7 +20,7 @@ namespace PuzzleBot
     {
     public:
         OpenCvCaptureEngine(std::string captureUrl)
-            : m_capture(captureUrl.c_str())
+            : m_capture(m_captureUrl.c_str())
             , m_captureThread([this] { Capturer(); })
             , m_frameGrabbed(false)
             , m_die(false)
