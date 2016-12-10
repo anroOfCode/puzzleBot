@@ -1,4 +1,6 @@
-﻿namespace PuzzleBot.Control
+﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
+
+namespace PuzzleBot.Control
 {
     public static class Utils
     {

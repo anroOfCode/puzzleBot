@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.Contracts;
+﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
+
+using System.Diagnostics.Contracts;
 
 namespace PuzzleBot.Control
 {

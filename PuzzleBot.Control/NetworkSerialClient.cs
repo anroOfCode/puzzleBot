@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
+
+using System;
 using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PuzzleBot.Control
 {
