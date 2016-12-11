@@ -48,4 +48,39 @@ namespace PuzzleBot.Control.OpenCV
             return ret;
         }
     }
+
+    public static class CameraCalibration
+    {
+        public static double Calibrate(int widthInSquares, int heightInSquares, float mmPerSquare, 
+            Point<float>[][] cornerPts, Point<int> cameraSize, out Mat cameraMatrix, out Mat distCoeffs)
+        {
+            var flattenedPoints = new float[cornerPts.Length * widthInSquares * heightInSquares * 2];
+            int flattenedPtIdx = 0;
+            for (int i = 0; i < cornerPts.Length; i++) {
+                for (int j = 0; j < widthInSquares * heightInSquares; j++) {
+                    flattenedPoints[flattenedPtIdx] = cornerPts[i][j].X;
+                    flattenedPoints[flattenedPtIdx + 1] = cornerPts[i][j].Y;
+                    flattenedPtIdx += 2;
+                }
+            }
+
+            NativeMethods.Mat innerDistCoeffs;
+            NativeMethods.Mat innerCameraMatrix;
+            double rms;
+            unsafe
+            {
+                NativeMethods.ComputeCalibration(widthInSquares, heightInSquares, mmPerSquare, 
+                    cameraSize.X, cameraSize.Y, flattenedPoints, cornerPts.Length, 
+                    &rms, &innerDistCoeffs, &innerCameraMatrix);
+            }
+            cameraMatrix = new Mat(innerCameraMatrix);
+            distCoeffs = new Mat(innerDistCoeffs);
+            return rms;
+        }
+
+        public static Mat Undistort(Mat img, Mat cameraIntrin, Mat distCoeff)
+        {
+            return new Mat(NativeMethods.Undistort(img.Handle, cameraIntrin.Handle, distCoeff.Handle));
+        }
+    }
 }

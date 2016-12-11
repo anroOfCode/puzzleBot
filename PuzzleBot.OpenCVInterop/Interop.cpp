@@ -88,6 +88,19 @@ namespace PuzzleBot
         cv::VideoCapture m_capture;
         std::thread m_captureThread;
     };
+
+    std::vector<cv::Point3f> BuildBoardCornerPositions(int patternWidth, int patternHeight, float mmPerSquare)
+    {
+        std::vector<cv::Point3f> r;
+        r.reserve(patternWidth * patternHeight);
+        for (int i = 0; i < patternHeight; i++) {
+            for (int j = 0; j < patternWidth; j++) {
+                r.emplace_back((float)j * mmPerSquare, (float)i * mmPerSquare, 0.f);
+            }
+        }
+
+        return r;
+    }
 }
 
 // Native interop methods to be PInvoked from C#.
@@ -129,7 +142,7 @@ EXTERN_DLL_EXPORT char* Mat_GetData(void* handle)
     return reinterpret_cast<char*>(static_cast<cv::Mat*>(handle)->data);
 }
 
-EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidth, int patternHeight, double* cornerPoints)
+EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidth, int patternHeight, float* cornerPoints)
 {
     auto img = static_cast<cv::Mat*>(imgHandle);
     std::vector<cv::Point2f> corners;
@@ -158,4 +171,52 @@ EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidt
     // unintuitive for sure.
     cv::drawChessboardCorners(*img, cv::Size(patternWidth, patternHeight), corners, found);
     return found;
+}
+
+EXTERN_DLL_EXPORT void ComputeCalibration(
+    int patternWidth, int patternHeight, float patternMmPerSquare,
+    int cameraImageWidth, int cameraImageHeight,
+    float* cornerPoints, int numBoards, 
+    double* rms, void** distCoeffsOut, void** cameraMatrixOut)
+{
+    cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
+    cv::Mat distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
+    std::vector<std::vector<cv::Point3f>> objectPoints;
+    objectPoints.resize(numBoards, 
+        PuzzleBot::BuildBoardCornerPositions(patternWidth, patternHeight, patternMmPerSquare));
+
+    std::vector<std::vector<cv::Point2f>> imagePoints;
+    imagePoints.reserve(numBoards);
+    int cornerPtIdx = 0;
+    for (int board = 0; board < numBoards; board++) {
+        std::vector<cv::Point2f> pts;
+        pts.reserve(patternHeight * patternWidth);
+        for (int i = 0; i < patternHeight * patternWidth; i++) {
+            pts.emplace_back(cornerPoints[cornerPtIdx], cornerPoints[cornerPtIdx + 1]);
+            cornerPtIdx += 2;
+        }
+        imagePoints.push_back(std::move(pts));
+    }
+
+    cv::Mat rvecs;
+    cv::Mat tvecs;
+    *rms = cv::calibrateCamera(
+        objectPoints,
+        imagePoints,
+        cv::Size(cameraImageWidth, cameraImageHeight),
+        cameraMatrix, distCoeffs, rvecs, tvecs);
+    *distCoeffsOut = new cv::Mat(distCoeffs);
+    *cameraMatrixOut = new cv::Mat(cameraMatrix);
+}
+
+EXTERN_DLL_EXPORT void* Undistort(void* img, void* cameraMatrix, void* distCoeffs)
+{
+    cv::Mat out;
+    cv::undistort(
+        *static_cast<cv::Mat*>(img),
+        out,
+        *static_cast<cv::Mat*>(cameraMatrix),
+        *static_cast<cv::Mat*>(distCoeffs)
+    );
+    return new cv::Mat(out);
 }
