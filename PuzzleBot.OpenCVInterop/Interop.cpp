@@ -5,9 +5,13 @@
 #include <mutex>
 #include <memory>
 #include <chrono>
+#include <vector>
 
 #include <opencv2\core.hpp>
+#include <opencv2\core\operations.hpp>
 #include <opencv2\videoio.hpp>
+#include <opencv2\calib3d.hpp>
+#include <opencv2\imgproc.hpp>
 
 #define EXTERN_DLL_EXPORT extern "C" __declspec(dllexport)
 
@@ -123,4 +127,35 @@ EXTERN_DLL_EXPORT int Mat_GetColumns(void* handle)
 EXTERN_DLL_EXPORT char* Mat_GetData(void* handle)
 {
     return reinterpret_cast<char*>(static_cast<cv::Mat*>(handle)->data);
+}
+
+EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidth, int patternHeight, double* cornerPoints)
+{
+    auto img = static_cast<cv::Mat*>(imgHandle);
+    std::vector<cv::Point2f> corners;
+    corners.resize(patternHeight * patternWidth);
+    bool found = false;
+    if (cv::findChessboardCorners(*img, cv::Size(patternWidth, patternHeight), corners,
+        CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE | CV_CALIB_CB_FAST_CHECK))
+    {
+        found = true;
+        cv::Mat grey;
+        cv::cvtColor(*img, grey, cv::COLOR_BGR2GRAY);
+        // One might wonder why this method isn't just rolled into findChessboardCorners. 
+        // One might wonder indeed.
+        cv::cornerSubPix(grey, corners, cv::Size(11, 11),
+            cv::Size(-1, -1),
+            cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 0.1));
+
+        int i = 0;
+        for (auto pt : corners) {
+            cornerPoints[i++] = pt.x;
+            cornerPoints[i++] = pt.y;
+        }
+    }
+
+    // Note that this modifies the source image... that's a little
+    // unintuitive for sure.
+    cv::drawChessboardCorners(*img, cv::Size(patternWidth, patternHeight), corners, found);
+    return found;
 }

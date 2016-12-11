@@ -40,6 +40,8 @@ namespace PuzzleBot.Control.OpenCV
             }
         }
 
+        public NativeMethods.Mat Handle { get { return _mat; } }
+
         ~Mat()
         {
             Dispose(false);

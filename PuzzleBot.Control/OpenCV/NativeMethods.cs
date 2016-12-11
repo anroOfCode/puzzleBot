@@ -37,5 +37,8 @@ namespace PuzzleBot.Control.OpenCV
 
         [DllImport(c_dllName)]
         public static extern byte* Mat_GetData(Mat handle);
+
+        [DllImport(c_dllName)]
+        public static extern bool TryFindChessboardCorners(Mat img, int patternWidth, int patternHeight, float[] cornerPoints);
     }
 }

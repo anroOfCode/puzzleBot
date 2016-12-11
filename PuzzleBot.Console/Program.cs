@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PuzzleBot.Control.OpenCV;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,10 +15,15 @@ namespace PuzzleBot.Console
             var cv = new CameraView("Camera 1");
             int i = 0;
 
+            var finder = new ChessboardCornerFinder(7, 5);
+
             while (true) {
                 using (var mat = ce.TryGrabFrame())
                     if (mat != null) {
                         System.Console.WriteLine($"{i++}: {mat.Columns} x {mat.Rows} mat.");
+                        if (finder.TryFind(mat) != null) {
+                            System.Console.WriteLine("Found some corners!");
+                        }
                         cv.UpdateImage(mat);
                     }
                     else
