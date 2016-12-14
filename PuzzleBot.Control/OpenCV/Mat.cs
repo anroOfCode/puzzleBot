@@ -76,9 +76,9 @@ namespace PuzzleBot.Control.OpenCV
 
         public NativeMethods.Mat Handle { get { return _mat; } }
 
-        public void* GetAddress(int x, int y)
+        public void* GetAddress(int row, int col)
         {
-            return RawData + x * _steps[0] + y * _steps[1];
+            return RawData + row * _steps[0] + col * _steps[1];
         }
 
         ~Mat()
@@ -109,21 +109,31 @@ namespace PuzzleBot.Control.OpenCV
 
     public unsafe static class MatReader
     {
-        public static Tuple<byte, byte, byte> GetColor(Mat source, int x, int y)
+        public static Tuple<byte, byte, byte> GetColor(Mat source, int row, int col)
         {
             Contract.Assert(source != null);
             Contract.Assert(source.Channels == 3);
             Contract.Assert(source.Type == Mat.Types.CV_8U);
-            var addr = (byte*)source.GetAddress(x, y);
+            var addr = (byte*)source.GetAddress(row, col);
             return Tuple.Create((byte)addr[0], (byte)addr[1], (byte)addr[3]);
         }
 
-        public static float GetFloat(Mat source, int x, int y)
+        public static float GetFloat(Mat source, int row, int col)
         {
             Contract.Assert(source != null);
             Contract.Assert(source.Channels == 1);
             Contract.Assert(source.Type == Mat.Types.CV_32F);
-            return *(float*)source.GetAddress(x, y);
+            return *(float*)source.GetAddress(row, col);
+        }
+
+        public static string StringifyFloat(Mat source)
+        {
+
+        }
+
+        public static float[] FlattenFloat(Mat source)
+        {
+            
         }
     }
 }

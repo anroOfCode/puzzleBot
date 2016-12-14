@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Con = System.Console;
 
 namespace PuzzleBot.Console
 {
@@ -11,6 +12,25 @@ namespace PuzzleBot.Console
     {
         static void Main(string[] args)
         {
+
+            unsafe
+            {
+                var arr = new float[] { 1.0f, 2.0f, 3.0f, 4.0f };
+                Mat m = null;
+                fixed (void* p = arr) {
+                    m = new Mat(Mat.Types.CV_32F, 1, 2, 2, p);
+                    Con.WriteLine($"{m.Rows}x{m.Columns}x{m.Channels}x{m.Type}");
+                }
+
+                for (int ii = 0; ii < m.Rows; ii++) {
+                    for (int j = 0; j < m.Columns; j++) {
+                        Con.Write($"{MatReader.GetFloat(m, ii, j)} ");
+                    }
+                    Con.WriteLine();
+                }
+            }
+
+            Con.ReadKey();
             var ce = new CaptureEngine("http://localhost:8080/cam_1.cgi?.mjpg");
             var cv = new CameraView("Camera 1");
             int i = 0;

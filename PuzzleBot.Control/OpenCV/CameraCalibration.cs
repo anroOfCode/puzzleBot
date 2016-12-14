@@ -2,23 +2,6 @@
 
 namespace PuzzleBot.Control.OpenCV
 {
-    public struct CameraParameters
-    {
-        public float FocalX;
-        public float FocalY;
-        public float CenterX;
-        public float CenterY;
-    }
-
-    public struct DistortionCoefficients
-    {
-        public float K_1;
-        public float K_2;
-        public float P_1;
-        public float P_2;
-        public float K_3;
-    }
-
     public struct Point<T>
     {
         public T X;
@@ -82,5 +65,14 @@ namespace PuzzleBot.Control.OpenCV
         {
             return new Mat(NativeMethods.Undistort(img.Handle, cameraIntrin.Handle, distCoeff.Handle));
         }
+
+        private const string c_componentName = "CameraCalibration";
+
+        //public static void RunCalibration(IHost host, 
+        //    int numTargets, int numFramesPerTarget, int widthInSquares, int heightInSquares, 
+        //    float mmPerSquare, out Mat cameraMatrix, out Mat distCoeffs)
+        //{
+
+        //}
     }
 }

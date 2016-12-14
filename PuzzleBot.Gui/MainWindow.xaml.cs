@@ -115,6 +115,11 @@ namespace PuzzleBotUi
         {
             _writer(component, msg);
         }
+
+        public string GetLineFromUser()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public partial class MainWindow : Window

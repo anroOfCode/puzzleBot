@@ -43,7 +43,7 @@ namespace PuzzleBot.Console
             int i = 0;
             unsafe
             {
-                var imgData = img.Data;
+                var imgData = img.RawData;
                 for (int y = 0; y < img.Rows; y++) {
                     for (int x = 0; x < img.Columns; x++) {
                         for (int j = 0; j < 3; j++) {
