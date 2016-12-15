@@ -110,15 +110,6 @@ namespace PuzzleBot.Control.OpenCV
 
     public unsafe static class MatReader
     {
-        public static Tuple<byte, byte, byte> GetColor(this Mat source, int row, int col)
-        {
-            Contract.Assert(source != null);
-            Contract.Assert(source.Channels == 3);
-            Contract.Assert(source.Type == Mat.Types.CV_8U);
-            var addr = (byte*)source.GetAddress(row, col);
-            return Tuple.Create((byte)addr[0], (byte)addr[1], (byte)addr[3]);
-        }
-
         public static float GetFloat(this Mat source, int row, int col, int channel = 0)
         {
             Contract.Assert(source != null);
@@ -170,7 +161,7 @@ namespace PuzzleBot.Control.OpenCV
             return jObj;
         }
 
-        public static Mat FromJObject(JObject source)
+        public static Mat ToMat(this JObject source)
         {
             var type = source["type"].Value<Mat.Types>();
             int rows = source["rows"].Value<int>();
@@ -179,18 +170,21 @@ namespace PuzzleBot.Control.OpenCV
 
             if (type == Mat.Types.CV_32F) {
                 float[] data = source["data"].ToObject<float[]>();
+                Contract.Assert(data.Length == rows * cols * channels);
                 fixed (void* pData = data) {
                     return new Mat(type, channels, rows, cols, pData);
                 }
             }
             else if (type == Mat.Types.CV_64F) {
                 double[] data = source["data"].ToObject<double[]>();
+                Contract.Assert(data.Length == rows * cols * channels);
                 fixed (void* pData = data) {
                     return new Mat(type, channels, rows, cols, pData);
                 }
             }
             else if (type == Mat.Types.CV_8U) {
                 byte[] data = source["data"].ToObject<byte[]>();
+                Contract.Assert(data.Length == rows * cols * channels);
                 fixed (void* pData = data) {
                     return new Mat(type, channels, rows, cols, pData);
                 }
