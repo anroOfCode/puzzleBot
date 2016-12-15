@@ -40,8 +40,12 @@ namespace PuzzleBot.Control
 
         public T GetParam<T>(string name)
         {
-            if (_settings[name] != null)
-                return _settings[name].Value<T>();
+            if (_settings[name] != null) {
+                if (typeof(T).IsEquivalentTo(typeof(JToken)))
+                    return (T)(object)_settings[name];
+                else
+                    return _settings[name].Value<T>();
+            }
             else {
                 switch (name) {
                     case "MachineHostName": return (T)(object)"192.168.1.74";
@@ -64,6 +68,8 @@ namespace PuzzleBot.Control
 
         public void SaveParam<T>(string name, T val)
         {
+            _settings[name] = JToken.FromObject(val);
+            File.WriteAllText(_paramFile, _settings.ToString(Newtonsoft.Json.Formatting.Indented));
         }
 
         public void WriteLogMessage(string component, string msg)

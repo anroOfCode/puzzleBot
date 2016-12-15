@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
 
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics.Contracts;
 
@@ -109,7 +110,7 @@ namespace PuzzleBot.Control.OpenCV
 
     public unsafe static class MatReader
     {
-        public static Tuple<byte, byte, byte> GetColor(Mat source, int row, int col)
+        public static Tuple<byte, byte, byte> GetColor(this Mat source, int row, int col)
         {
             Contract.Assert(source != null);
             Contract.Assert(source.Channels == 3);
@@ -118,22 +119,84 @@ namespace PuzzleBot.Control.OpenCV
             return Tuple.Create((byte)addr[0], (byte)addr[1], (byte)addr[3]);
         }
 
-        public static float GetFloat(Mat source, int row, int col)
+        public static float GetFloat(this Mat source, int row, int col, int channel = 0)
         {
             Contract.Assert(source != null);
             Contract.Assert(source.Channels == 1);
             Contract.Assert(source.Type == Mat.Types.CV_32F);
-            return *(float*)source.GetAddress(row, col);
+            return *((float*)source.GetAddress(row, col) + channel);
         }
 
-        public static string StringifyFloat(Mat source)
+        public static byte GetByte(this Mat source, int row, int col, int channel = 0)
         {
-
+            Contract.Assert(source != null);
+            Contract.Assert(source.Channels == 1);
+            Contract.Assert(source.Type == Mat.Types.CV_32F);
+            return *((byte*)source.GetAddress(row, col) + channel);
         }
 
-        public static float[] FlattenFloat(Mat source)
+        public static JObject ToJObject(this Mat source)
         {
-            
+            var jObj = new JObject();
+            jObj["type"] = new JValue(source.Type);
+            jObj["rows"] = new JValue(source.Rows);
+            jObj["cols"] = new JValue(source.Columns);
+            jObj["channels"] = new JValue(source.Channels);
+
+            if (source.Type == Mat.Types.CV_8U) {
+                var data = new byte[source.Rows * source.Columns * source.Channels];
+                int dataIdx = 0;
+                for (int i = 0; i < source.Rows; i++) {
+                    for (int j = 0; j < source.Columns; j++) {
+                        for (int k = 0; k < source.Channels; k++) {
+                            data[dataIdx++] = source.GetByte(i, j, k);
+                        }
+                    }
+                }
+                jObj["data"] = new JArray(data);
+            }
+            else {
+                var data = new double[source.Rows * source.Columns * source.Channels];
+                int dataIdx = 0;
+                for (int i = 0; i < source.Rows; i++) {
+                    for (int j = 0; j < source.Columns; j++) {
+                        for (int k = 0; k < source.Channels; k++) {
+                            data[dataIdx++] = source.GetFloat(i, j, k);
+                        }
+                    }
+                }
+                jObj["data"] = new JArray(data);
+            }
+            return jObj;
+        }
+
+        public static Mat FromJObject(JObject source)
+        {
+            var type = source["type"].Value<Mat.Types>();
+            int rows = source["rows"].Value<int>();
+            int cols = source["cols"].Value<int>();
+            int channels = source["channels"].Value<int>();
+
+            if (type == Mat.Types.CV_32F) {
+                float[] data = source["data"].ToObject<float[]>();
+                fixed (void* pData = data) {
+                    return new Mat(type, channels, rows, cols, pData);
+                }
+            }
+            else if (type == Mat.Types.CV_64F) {
+                double[] data = source["data"].ToObject<double[]>();
+                fixed (void* pData = data) {
+                    return new Mat(type, channels, rows, cols, pData);
+                }
+            }
+            else if (type == Mat.Types.CV_8U) {
+                byte[] data = source["data"].ToObject<byte[]>();
+                fixed (void* pData = data) {
+                    return new Mat(type, channels, rows, cols, pData);
+                }
+            }
+
+            return null;
         }
     }
 }

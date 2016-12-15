@@ -20,6 +20,8 @@ namespace PuzzleBot.Console
                 fixed (void* p = arr) {
                     m = new Mat(Mat.Types.CV_32F, 1, 2, 2, p);
                     Con.WriteLine($"{m.Rows}x{m.Columns}x{m.Channels}x{m.Type}");
+
+                    Con.WriteLine(MatReader.FromJObject(m.ToJObject()).ToJObject().ToString());
                 }
 
                 for (int ii = 0; ii < m.Rows; ii++) {
