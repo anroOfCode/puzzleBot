@@ -192,5 +192,10 @@ namespace PuzzleBot.Control.OpenCV
 
             return null;
         }
+
+        public static void DrawCrosshair(this Mat source)
+        {
+            NativeMethods.Mat_DrawCrosshair(source.Handle);
+        }
     }
 }

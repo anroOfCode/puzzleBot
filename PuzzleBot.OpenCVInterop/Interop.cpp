@@ -170,6 +170,13 @@ EXTERN_DLL_EXPORT void* Mat_Create(int type, int channels, int rows, int cols, v
     return new cv::Mat(cv::Mat(cv::Size(rows, cols), CV_MAKETYPE(type, channels), data).clone());
 }
 
+EXTERN_DLL_EXPORT void Mat_DrawCrosshair(void* handle)
+{
+    auto mat = static_cast<cv::Mat*>(handle);
+    cv::line(*mat, cv::Point(0, mat->rows / 2), cv::Point(mat->cols, mat->rows / 2), cv::Scalar(0, 0, 255), 1);
+    cv::line(*mat, cv::Point(mat->cols / 2, 0), cv::Point(mat->cols / 2, mat->rows), cv::Scalar(0, 0, 255), 1);
+}
+
 EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidth, int patternHeight, float* cornerPoints)
 {
     auto img = static_cast<cv::Mat*>(imgHandle);
