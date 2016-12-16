@@ -116,7 +116,7 @@ namespace PuzzleBotUi
             _writer(component, msg);
         }
 
-        public string GetLineFromUser()
+        public string ReadLine()
         {
             throw new NotImplementedException();
         }

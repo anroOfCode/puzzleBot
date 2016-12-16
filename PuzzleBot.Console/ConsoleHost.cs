@@ -1,36 +1,28 @@
-﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
-
-using Newtonsoft.Json.Linq;
+﻿using PuzzleBot.Control;
 using System;
-using System.Diagnostics.Contracts;
-using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace PuzzleBot.Control
+
+namespace PuzzleBot.Console
 {
-    public interface IHost
-    {
-        T GetParam<T>(string name);
-        void SaveParam<T>(string name, T val);
+    using Newtonsoft.Json.Linq;
+    using System.Diagnostics.Contracts;
+    using System.IO;
+    using Console = System.Console;
 
-        void WriteLogMessage(string component, string msg);
-
-        string GetLineFromUser();
-    }
-
-    public sealed class Host
+    internal sealed class Host
         : IHost
     {
         private readonly string _paramFile;
-        private readonly Action<string, string> _writer;
-
         private JObject _settings;
 
-        public Host(string paramFile, Action<string, string> writer)
+        public Host(string paramFile)
         {
             Contract.Assert(!string.IsNullOrWhiteSpace(paramFile));
-            Contract.Assert(writer != null);
             _paramFile = paramFile;
-            _writer = writer;
 
             if (File.Exists(_paramFile))
                 _settings = JObject.Parse(File.ReadAllText(_paramFile));
@@ -44,12 +36,15 @@ namespace PuzzleBot.Control
                 if (typeof(T).IsEquivalentTo(typeof(JToken)))
                     return (T)(object)_settings[name];
                 else
-                    return _settings[name].Value<T>();
+                    return _settings[name].ToObject<T>();
             }
             else {
                 switch (name) {
                     case "MachineHostName": return (T)(object)"192.168.1.74";
                     case "MachinePort": return (T)(object)2000;
+                    case "DownCameraPort": return (T)(object)8080;
+                    case "UpCameraPort": return (T)(object)8081;
+
                     case "MaxX": return (T)(object)595.0;
                     case "MaxY": return (T)(object)360.0;
                     case "MaxZ": return (T)(object)30.0;
@@ -74,14 +69,17 @@ namespace PuzzleBot.Control
 
         public void WriteLogMessage(string component, string msg)
         {
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][[{component}] - {msg}");
-            _writer(component, msg);
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}][{component}] - {msg}");
         }
 
-        public string GetLineFromUser()
+        public string ReadLine()
         {
             return Console.ReadLine();
         }
-    }
 
+        public ICameraView CreateCameraView(string title)
+        {
+            return new CameraView(title);
+        }
+    }
 }
