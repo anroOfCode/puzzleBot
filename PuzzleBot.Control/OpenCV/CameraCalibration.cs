@@ -1,24 +1,10 @@
 ﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
 
+using Newtonsoft.Json;
+using System;
+
 namespace PuzzleBot.Control.OpenCV
 {
-    public struct CameraParameters
-    {
-        public float FocalX;
-        public float FocalY;
-        public float CenterX;
-        public float CenterY;
-    }
-
-    public struct DistortionCoefficients
-    {
-        public float K_1;
-        public float K_2;
-        public float P_1;
-        public float P_2;
-        public float K_3;
-    }
-
     public struct Point<T>
     {
         public T X;
@@ -51,13 +37,20 @@ namespace PuzzleBot.Control.OpenCV
 
     public static class CameraCalibration
     {
-        public static double Calibrate(int widthInSquares, int heightInSquares, float mmPerSquare, 
+        public sealed class ChessboardParams
+        {
+            public int HorizontalSquareCount;
+            public int VerticalSquareCount;
+            public float SquareWidthInMm;
+        }
+
+        public static double Calibrate(ChessboardParams cbParams,
             Point<float>[][] cornerPts, Point<int> cameraSize, out Mat cameraMatrix, out Mat distCoeffs)
         {
-            var flattenedPoints = new float[cornerPts.Length * widthInSquares * heightInSquares * 2];
+            var flattenedPoints = new float[cornerPts.Length * cbParams.HorizontalSquareCount * cbParams.VerticalSquareCount * 2];
             int flattenedPtIdx = 0;
             for (int i = 0; i < cornerPts.Length; i++) {
-                for (int j = 0; j < widthInSquares * heightInSquares; j++) {
+                for (int j = 0; j < cbParams.HorizontalSquareCount * cbParams.VerticalSquareCount; j++) {
                     flattenedPoints[flattenedPtIdx] = cornerPts[i][j].X;
                     flattenedPoints[flattenedPtIdx + 1] = cornerPts[i][j].Y;
                     flattenedPtIdx += 2;
@@ -69,7 +62,7 @@ namespace PuzzleBot.Control.OpenCV
             double rms;
             unsafe
             {
-                NativeMethods.ComputeCalibration(widthInSquares, heightInSquares, mmPerSquare, 
+                NativeMethods.ComputeCalibration(cbParams.HorizontalSquareCount, cbParams.VerticalSquareCount, cbParams.SquareWidthInMm, 
                     cameraSize.X, cameraSize.Y, flattenedPoints, cornerPts.Length, 
                     &rms, &innerDistCoeffs, &innerCameraMatrix);
             }
@@ -82,5 +75,44 @@ namespace PuzzleBot.Control.OpenCV
         {
             return new Mat(NativeMethods.Undistort(img.Handle, cameraIntrin.Handle, distCoeff.Handle));
         }
+
+        private const string c_componentName = "CameraCalibration";
+
+        private static ChessboardParams ConfigureChessboard(IHost host)
+        {
+            host.WriteLogMessage(c_componentName, "Enter number of chessboard squares in a row:");
+            var inRow = int.Parse(host.ReadLine());
+            host.WriteLogMessage(c_componentName, "Enter number of chessboard squares in a column:");
+            var inCol = int.Parse(host.ReadLine());
+            host.WriteLogMessage(c_componentName, "Enter width of a single square in millimeters:");
+            var mm = float.Parse(host.ReadLine());
+            return new ChessboardParams { HorizontalSquareCount = inRow, VerticalSquareCount = inCol, SquareWidthInMm = mm };
+        }
+
+        public static ChessboardParams EnsureChessboardConfigured(IHost host)
+        {
+            var cbparams = host.GetParam<CameraCalibration.ChessboardParams>("Chessboard");
+            if (cbparams == null) {
+                cbparams = CameraCalibration.ConfigureChessboard(host);
+                host.SaveParam("Chessboard", cbparams);
+            }
+            else {
+                host.WriteLogMessage(c_componentName, "Found chessboard data:" +
+                    Environment.NewLine + JsonConvert.SerializeObject(cbparams));
+                host.WriteLogMessage(c_componentName, "Keep? (Y/N)");
+                if (!host.ReadLine().Equals("Y")) {
+                    cbparams = ConfigureChessboard(host);
+                    host.SaveParam("Chessboard", cbparams);
+                }
+            }
+            return cbparams;
+        }
+
+        //public static void RunCalibration(IHost host, CaptureEngine camera,
+        //    int numTargets, ChessboardParams board, float mmPerSquare, 
+        //    out Mat cameraMatrix, out Mat distCoeffs)
+        //{
+
+        //}
     }
 }

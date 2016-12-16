@@ -142,6 +142,41 @@ EXTERN_DLL_EXPORT char* Mat_GetData(void* handle)
     return reinterpret_cast<char*>(static_cast<cv::Mat*>(handle)->data);
 }
 
+EXTERN_DLL_EXPORT int Mat_GetDims(void* handle)
+{
+    return static_cast<cv::Mat*>(handle)->dims;
+}
+
+EXTERN_DLL_EXPORT void Mat_GetSteps(void* handle, int* dst)
+{
+    auto mat = static_cast<cv::Mat*>(handle);
+    for (int i = 0; i < mat->dims; i++)
+        dst[i] = static_cast<int>(mat->step[i]);
+}
+
+EXTERN_DLL_EXPORT int Mat_GetType(void* handle)
+{
+    return static_cast<cv::Mat*>(handle)->depth();
+    auto t = CV_8U;
+}
+
+EXTERN_DLL_EXPORT int Mat_GetChannels(void* handle)
+{
+    return static_cast<cv::Mat*>(handle)->channels();
+}
+
+EXTERN_DLL_EXPORT void* Mat_Create(int type, int channels, int rows, int cols, void* data)
+{
+    return new cv::Mat(cv::Mat(cv::Size(rows, cols), CV_MAKETYPE(type, channels), data).clone());
+}
+
+EXTERN_DLL_EXPORT void Mat_DrawCrosshair(void* handle)
+{
+    auto mat = static_cast<cv::Mat*>(handle);
+    cv::line(*mat, cv::Point(0, mat->rows / 2), cv::Point(mat->cols, mat->rows / 2), cv::Scalar(0, 0, 255), 1);
+    cv::line(*mat, cv::Point(mat->cols / 2, 0), cv::Point(mat->cols / 2, mat->rows), cv::Scalar(0, 0, 255), 1);
+}
+
 EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidth, int patternHeight, float* cornerPoints)
 {
     auto img = static_cast<cv::Mat*>(imgHandle);

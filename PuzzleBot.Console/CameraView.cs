@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2016 Andrew Robinson. All rights reserved.
 
+using PuzzleBot.Control;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -10,7 +11,7 @@ namespace PuzzleBot.Console
 {
     // Uses WinForms to create a window on the screen to display an OpenCV
     // matrix image.
-    public sealed class CameraView
+    public sealed class CameraView : ICameraView
     {
         private Form _displayForm;
         private Thread _messagePump;
@@ -21,6 +22,8 @@ namespace PuzzleBot.Console
             _displayForm.Text = title;
             _messagePump = new Thread(UpdateLoop);
             _messagePump.Start();
+            // Cheap trick to wait for the message pump to warm up.
+            Thread.Sleep(100);
         }
 
         private void UpdateLoop()
@@ -43,7 +46,7 @@ namespace PuzzleBot.Console
             int i = 0;
             unsafe
             {
-                var imgData = img.Data;
+                var imgData = img.RawData;
                 for (int y = 0; y < img.Rows; y++) {
                     for (int x = 0; x < img.Columns; x++) {
                         for (int j = 0; j < 3; j++) {

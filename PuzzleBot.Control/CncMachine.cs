@@ -243,6 +243,16 @@ namespace PuzzleBot.Control
             RawSend(j);
         }
 
+        public void Deenergize()
+        {
+            ThrowIfError();
+            _host.WriteLogMessage(ComponentName, "Deenergizing motors.");
+            var j = new JObject();
+            j["de"] = null;
+            RawSend(j);
+            Reset();
+        }
+
         public void Reset()
         {
             _error = false;
