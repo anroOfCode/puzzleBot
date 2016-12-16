@@ -18,6 +18,8 @@ namespace PuzzleBot.Console
     {
         private readonly string _paramFile;
         private JObject _settings;
+        private Dictionary<string, Action> _keyDelegates = new Dictionary<string, Action>();
+        private Dictionary<char, bool> _keyDown = new Dictionary<char, bool>();
 
         public Host(string paramFile)
         {
@@ -79,7 +81,41 @@ namespace PuzzleBot.Console
 
         public ICameraView CreateCameraView(string title)
         {
-            return new CameraView(title);
+            var cv = new CameraView(title);
+            cv.Form.KeyDown += CameraViewKeyDown;
+            cv.Form.KeyUp += CameraViewKeyUp;
+            return cv;
+        }
+
+        private void CameraViewKeyUp(object sender, System.Windows.Forms.KeyEventArgs e)
+        {
+            var str = GetKeyDelegateString((char)e.KeyCode, true, e.Alt);
+            if (_keyDelegates.ContainsKey(str)) {
+                _keyDelegates[str]();
+            }
+
+            if (_keyDown.ContainsKey((char)e.KeyCode)) {
+                _keyDown[(char)e.KeyCode] = false;
+            }
+        }
+
+        private void CameraViewKeyDown(object sender, System.Windows.Forms.KeyEventArgs e)
+        {
+            var str = GetKeyDelegateString((char)e.KeyCode, false, e.Alt);
+            if (_keyDelegates.ContainsKey(str) && (!_keyDown.ContainsKey((char)e.KeyCode) || !_keyDown[(char)e.KeyCode])) {
+                _keyDelegates[str]();
+                _keyDown[(char)e.KeyCode] = true;
+            }
+        }
+
+        public void SetKeyDelegate(char keyChar, bool up, bool alt, Action method)
+        {
+            _keyDelegates[GetKeyDelegateString(keyChar, up, alt)] = method;
+        }
+
+        private string GetKeyDelegateString(char keyChar, bool up, bool alt)
+        {
+            return $"{keyChar}_{up}_{alt}";
         }
     }
 }

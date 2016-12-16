@@ -16,6 +16,8 @@ namespace PuzzleBot.Console
         private Form _displayForm;
         private Thread _messagePump;
 
+        public Form Form { get { return _displayForm; } }
+
         public CameraView(string title)
         {
             _displayForm = new Form();

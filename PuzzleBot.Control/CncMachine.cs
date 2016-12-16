@@ -356,7 +356,10 @@ namespace PuzzleBot.Control
             return
                 status == MachineStatus.Homing ||
                 status == MachineStatus.Run ||
-                status == MachineStatus.Probe;
+                status == MachineStatus.Probe ||
+                // When jogging and pausing the jog the machine sits here while
+                // decelerating.
+                status == MachineStatus.Hold;
         }
 
         private static bool IsIdleState(MachineStatus status)

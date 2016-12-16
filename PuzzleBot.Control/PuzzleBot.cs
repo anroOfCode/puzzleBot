@@ -20,6 +20,9 @@ namespace PuzzleBot.Control
 
         CncMachine _machine;
 
+        Mat _downwardCameraIntrinsic;
+        Mat _downwardCameraExtrinstic;
+
         const string c_componentName = "PuzzleBot";
 
         public PuzzleBot(IHost host)
@@ -36,10 +39,13 @@ namespace PuzzleBot.Control
             _viewUpdateThread = new Thread(CameraViewUpdater);
             _viewUpdateThread.Start();
 
+
+
             _host.WriteLogMessage(c_componentName, "Press enter to home...");
             _host.ReadLine();
             _machine.PerformMechanicalHome();
 
+            AttachKeyHandlers();
             MainControlLoop();
         }
 
@@ -53,19 +59,28 @@ namespace PuzzleBot.Control
                 }
                 using (var downImage = _downwardCamera.TryGrabFrame()) {
                     if (downImage == null) continue;
-                    downImage.DrawCrosshair();
-                    _downwardCameraView.UpdateImage(downImage);
+                    if (_downwardCameraIntrinsic != null) {
+                        using (var correctedDownImage = CameraCalibration.Undistort(downImage, _downwardCameraIntrinsic, _downwardCameraExtrinstic)) {
+                            correctedDownImage.DrawCrosshair();
+                            _downwardCameraView.UpdateImage(correctedDownImage);
+                        }
+                    }
+                    else {
+                        downImage.DrawCrosshair();
+                        _downwardCameraView.UpdateImage(downImage);
+                    }
                 }
             }
         }
 
-        void MainControlLoop()
+        private void MainControlLoop()
         {
             while (true) {
                 _host.WriteLogMessage(c_componentName, "What would you like to do?" + Environment.NewLine +
                     "1 - Calibrate the downward camera" + Environment.NewLine +
                     "2 - Perform a mechanical homing operation" + Environment.NewLine +
-                    "3 - Deenergize the motors" + Environment.NewLine);
+                    "3 - Deenergize the motors" + Environment.NewLine +
+                    "4 - Configure chessboard size" + Environment.NewLine);
                 int opt = int.Parse(_host.ReadLine());
                 switch (opt) {
                     case 1:
@@ -81,9 +96,46 @@ namespace PuzzleBot.Control
             }
         }
 
+        private void AttachKeyHandlers()
+        {
+            //Left = 37,
+            //Up = 38,
+            //Right = 39,
+            //Down = 40,
+            _host.SetKeyDelegate((char)38, false, false, () => _machine.StartJogTop());
+            _host.SetKeyDelegate((char)38, true, false, () => _machine.StopJog());
+            _host.SetKeyDelegate((char)40, false, false, () => _machine.StartJogBottom());
+            _host.SetKeyDelegate((char)40, true, false, () => _machine.StopJog());
+            _host.SetKeyDelegate((char)37, false, false, () => _machine.StartJogLeft());
+            _host.SetKeyDelegate((char)37, true, false, () => _machine.StopJog());
+            _host.SetKeyDelegate((char)39, false, false, () => _machine.StartJogRight());
+            _host.SetKeyDelegate((char)39, true, false, () => _machine.StopJog());
+
+            _host.SetKeyDelegate('U', false, false, () => _machine.StartJogUp());
+            _host.SetKeyDelegate('U', true, false, () => _machine.StopJog());
+            _host.SetKeyDelegate('D', false, false, () => _machine.StartJogDown());
+            _host.SetKeyDelegate('D', true, false, () => _machine.StopJog());
+            _host.SetKeyDelegate('L', false, false, () => _machine.StartJogCcw());
+            _host.SetKeyDelegate('L', true, false, () => _machine.StopJog());
+            _host.SetKeyDelegate('R', false, false, () => _machine.StartJogCw());
+            _host.SetKeyDelegate('R', true, false, () => _machine.StopJog());
+
+            _host.SetKeyDelegate((char)38, false, true, () => _machine.NudgeTop(_host.GetParam<double>("NudgeY")));
+            _host.SetKeyDelegate((char)40, false, true, () => _machine.NudgeBottom(_host.GetParam<double>("NudgeY")));
+            _host.SetKeyDelegate((char)37, false, true, () => _machine.NudgeLeft(_host.GetParam<double>("NudgeX")));
+            _host.SetKeyDelegate((char)39, false, true, () => _machine.NudgeRight(_host.GetParam<double>("NudgeX")));
+            _host.SetKeyDelegate('U', false, true, () => _machine.NudgeUp(_host.GetParam<double>("NudgeZ")));
+            _host.SetKeyDelegate('D', false, true, () => _machine.NudgeDown(_host.GetParam<double>("NudgeZ")));
+            _host.SetKeyDelegate('L', false, true, () => _machine.NudgeCw(_host.GetParam<double>("NudgeA")));
+            _host.SetKeyDelegate('R', false, true, () => _machine.NudgeCcw(_host.GetParam<double>("NudgeA")));
+        }
+
         void Routine_CameraCalibration()
         {
+            _host.WriteLogMessage(c_componentName, "Ensuring chessboard configured...");
+            var cbParams = CameraCalibration.EnsureChessboardConfigured(_host);
 
+            _host.WriteLogMessage(c_componentName, "Jog machine over first calibration target and press enter.");
         }
 
         void Routine_MechHome()

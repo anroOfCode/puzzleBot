@@ -67,7 +67,7 @@
     <Compile Include="CncMachine.cs" />
     <Compile Include="CncMachineUtils.cs" />
     <Compile Include="CoordinateSystem.cs" />
-    <Compile Include="Host.cs" />
+    <Compile Include="IHost.cs" />
     <Compile Include="OpenCV\CaptureEngine.cs" />
     <Compile Include="OpenCV\NativeMethods.cs" />
     <Compile Include="NetworkSerialClient.cs" />

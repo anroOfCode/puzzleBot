@@ -18,7 +18,7 @@ namespace PuzzleBot.Control
 
         string ReadLine();
 
-        void AddKeyListener(char keyChar, bool up, Action method);
+        void SetKeyDelegate(char keyChar, bool up, bool alt, Action method);
     }
 
     public interface ICameraView
