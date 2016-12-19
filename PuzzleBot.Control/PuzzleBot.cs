@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using PuzzleBot.Control.OpenCV;
+using Newtonsoft.Json.Linq;
 
 namespace PuzzleBot.Control
 {
@@ -22,6 +23,7 @@ namespace PuzzleBot.Control
 
         Mat _downwardCameraIntrinsic;
         Mat _downwardCameraExtrinstic;
+        bool _downwardImageOverrideMode = false;
 
         const string c_componentName = "PuzzleBot";
 
@@ -36,10 +38,11 @@ namespace PuzzleBot.Control
                 $"http://{_host.GetParam<string>("MachineHostName")}:{_host.GetParam<int>("DownCameraPort")}/?action=stream");
             _upwardCameraView = _host.CreateCameraView("Upward Camera");
             _downwardCameraView = _host.CreateCameraView("Downward Camera");
+            _downwardCameraIntrinsic = _host.GetParam<JObject>("IntrinsticCalib").ToMat();
+            _downwardCameraExtrinstic = _host.GetParam<JObject>("ExtrinsticCalib").ToMat();
+
             _viewUpdateThread = new Thread(CameraViewUpdater);
             _viewUpdateThread.Start();
-
-
 
             _host.WriteLogMessage(c_componentName, "Press enter to home...");
             _host.ReadLine();
@@ -57,17 +60,20 @@ namespace PuzzleBot.Control
                     upImage.DrawCrosshair();
                     _upwardCameraView.UpdateImage(upImage);
                 }
-                using (var downImage = _downwardCamera.TryGrabFrame()) {
-                    if (downImage == null) continue;
-                    if (_downwardCameraIntrinsic != null) {
-                        using (var correctedDownImage = CameraCalibration.Undistort(downImage, _downwardCameraIntrinsic, _downwardCameraExtrinstic)) {
-                            correctedDownImage.DrawCrosshair();
-                            _downwardCameraView.UpdateImage(correctedDownImage);
+
+                if (!_downwardImageOverrideMode) {
+                    using (var downImage = _downwardCamera.TryGrabFrame()) {
+                        if (downImage == null) continue;
+                        if (_downwardCameraIntrinsic != null) {
+                            using (var correctedDownImage = CameraCalibration.Undistort(downImage, _downwardCameraIntrinsic, _downwardCameraExtrinstic)) {
+                                correctedDownImage.DrawCrosshair();
+                                _downwardCameraView.UpdateImage(correctedDownImage);
+                            }
                         }
-                    }
-                    else {
-                        downImage.DrawCrosshair();
-                        _downwardCameraView.UpdateImage(downImage);
+                        else {
+                            downImage.DrawCrosshair();
+                            _downwardCameraView.UpdateImage(downImage);
+                        }
                     }
                 }
             }
@@ -80,7 +86,8 @@ namespace PuzzleBot.Control
                     "1 - Calibrate the downward camera" + Environment.NewLine +
                     "2 - Perform a mechanical homing operation" + Environment.NewLine +
                     "3 - Deenergize the motors" + Environment.NewLine +
-                    "4 - Configure chessboard size" + Environment.NewLine);
+                    "4 - Clear calibration data" + Environment.NewLine 
+                );
                 int opt = int.Parse(_host.ReadLine());
                 switch (opt) {
                     case 1:
@@ -91,6 +98,9 @@ namespace PuzzleBot.Control
                         break;
                     case 3:
                         Routine_Deenergize();
+                        break;
+                    case 4:
+                        Routine_ClearCalibrationData();
                         break;
                 }
             }
@@ -134,8 +144,59 @@ namespace PuzzleBot.Control
         {
             _host.WriteLogMessage(c_componentName, "Ensuring chessboard configured...");
             var cbParams = CameraCalibration.EnsureChessboardConfigured(_host);
+            var finder = new ChessboardCornerFinder(cbParams.HorizontalSquareCount, cbParams.VerticalSquareCount);
+            List<Point<float>[]> calPoints = new List<OpenCV.Point<float>[]>();
+
+            int camWidth = 0;
+            int camHeight = 0;
+            Action findCorner = () => {
+                _downwardImageOverrideMode = true;
+                while (true) {
+                    using (var img = _downwardCamera.TryGrabFrame()) {
+                        camWidth = img.Columns;
+                        camHeight = img.Rows;
+                        var result = finder.TryFind(img);
+                        _downwardCameraView.UpdateImage(img);
+                        if (result != null) {
+                            _host.WriteLogMessage(c_componentName, "Found corners!");
+                            calPoints.Add(result);
+                            Thread.Sleep(100);
+                            break;
+                        }
+                    }
+                }
+                _downwardImageOverrideMode = false;
+            };
+
+            Action findCornerSet = () => {
+                findCorner();
+                Thread.Sleep(100);
+                findCorner();
+                Thread.Sleep(100);
+                findCorner();
+                Thread.Sleep(100);
+            };
 
             _host.WriteLogMessage(c_componentName, "Jog machine over first calibration target and press enter.");
+            _host.ReadLine();
+
+            while (true) {
+                findCornerSet();
+                _host.WriteLogMessage(c_componentName, "Jog machine over next calibration target and press enter or (N) to stop.");
+                if (_host.ReadLine().Equals("N")) break;
+            }
+
+            Mat camMat;
+            Mat distCoeff;
+            var rms = CameraCalibration.Calibrate(cbParams, calPoints.ToArray(), 
+                new Point<int>() { X = camWidth, Y = camHeight }, out camMat, out distCoeff);
+            _host.WriteLogMessage(c_componentName, $"Camera claibrated, {rms} error.");
+
+            _host.SaveParam("IntrinsticCalib", camMat.ToJObject());
+            _host.SaveParam("ExtrinsticCalib", distCoeff.ToJObject());
+            _host.WriteLogMessage(c_componentName, "Camera calibated!");
+            _downwardCameraExtrinstic = distCoeff;
+            _downwardCameraIntrinsic = camMat;
         }
 
         void Routine_MechHome()
@@ -146,6 +207,12 @@ namespace PuzzleBot.Control
         void Routine_Deenergize()
         {
             _machine.Deenergize();
+        }
+
+        void Routine_ClearCalibrationData()
+        {
+            _downwardCameraIntrinsic = null;
+            _downwardCameraExtrinstic = null;
         }
     }
 }

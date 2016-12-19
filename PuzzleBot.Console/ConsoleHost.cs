@@ -35,7 +35,7 @@ namespace PuzzleBot.Console
         public T GetParam<T>(string name)
         {
             if (_settings[name] != null) {
-                if (typeof(T).IsEquivalentTo(typeof(JToken)))
+                if (typeof(T).IsEquivalentTo(typeof(JObject)))
                     return (T)(object)_settings[name];
                 else
                     return _settings[name].ToObject<T>();

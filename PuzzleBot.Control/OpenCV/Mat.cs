@@ -110,18 +110,23 @@ namespace PuzzleBot.Control.OpenCV
 
     public unsafe static class MatReader
     {
+        public static double GetDouble(this Mat source, int row, int col, int channel = 0)
+        {
+            Contract.Assert(source != null);
+            Contract.Assert(source.Type == Mat.Types.CV_64F);
+            return *((double*)source.GetAddress(row, col) + channel * 8);
+        }
+
         public static float GetFloat(this Mat source, int row, int col, int channel = 0)
         {
             Contract.Assert(source != null);
-            Contract.Assert(source.Channels == 1);
             Contract.Assert(source.Type == Mat.Types.CV_32F);
-            return *((float*)source.GetAddress(row, col) + channel);
+            return *((float*)source.GetAddress(row, col) + channel * 4);
         }
 
         public static byte GetByte(this Mat source, int row, int col, int channel = 0)
         {
             Contract.Assert(source != null);
-            Contract.Assert(source.Channels == 1);
             Contract.Assert(source.Type == Mat.Types.CV_32F);
             return *((byte*)source.GetAddress(row, col) + channel);
         }
@@ -146,8 +151,8 @@ namespace PuzzleBot.Control.OpenCV
                 }
                 jObj["data"] = new JArray(data);
             }
-            else {
-                var data = new double[source.Rows * source.Columns * source.Channels];
+            else if (source.Type == Mat.Types.CV_32F) {
+                var data = new float[source.Rows * source.Columns * source.Channels];
                 int dataIdx = 0;
                 for (int i = 0; i < source.Rows; i++) {
                     for (int j = 0; j < source.Columns; j++) {
@@ -158,12 +163,26 @@ namespace PuzzleBot.Control.OpenCV
                 }
                 jObj["data"] = new JArray(data);
             }
+            else {
+                var data = new double[source.Rows * source.Columns * source.Channels];
+                int dataIdx = 0;
+                for (int i = 0; i < source.Rows; i++) {
+                    for (int j = 0; j < source.Columns; j++) {
+                        for (int k = 0; k < source.Channels; k++) {
+                            data[dataIdx++] = source.GetDouble(i, j, k);
+                        }
+                    }
+                }
+                jObj["data"] = new JArray(data);
+            }
             return jObj;
         }
 
         public static Mat ToMat(this JObject source)
         {
-            var type = source["type"].Value<Mat.Types>();
+            if (source == null) return null;
+
+            var type = (Mat.Types)source["type"].Value<int>();
             int rows = source["rows"].Value<int>();
             int cols = source["cols"].Value<int>();
             int channels = source["channels"].Value<int>();
@@ -196,6 +215,11 @@ namespace PuzzleBot.Control.OpenCV
         public static void DrawCrosshair(this Mat source)
         {
             NativeMethods.Mat_DrawCrosshair(source.Handle);
+        }
+
+        public static void SaveAs(this Mat source, string fileName)
+        {
+            NativeMethods.Mat_SaveImage(source.Handle, fileName);
         }
     }
 }

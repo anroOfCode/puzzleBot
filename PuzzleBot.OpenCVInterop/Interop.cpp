@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <opencv2\core.hpp>
+#include <opencv2\opencv.hpp>
 #include <opencv2\core\operations.hpp>
 #include <opencv2\videoio.hpp>
 #include <opencv2\calib3d.hpp>
@@ -177,14 +178,33 @@ EXTERN_DLL_EXPORT void Mat_DrawCrosshair(void* handle)
     cv::line(*mat, cv::Point(mat->cols / 2, 0), cv::Point(mat->cols / 2, mat->rows), cv::Scalar(0, 0, 255), 1);
 }
 
+EXTERN_DLL_EXPORT void Mat_SaveImage(void* handle, char* fileName)
+{
+    cv::imwrite(fileName, *static_cast<cv::Mat*>(handle));
+}
+
 EXTERN_DLL_EXPORT bool TryFindChessboardCorners(void* imgHandle, int patternWidth, int patternHeight, float* cornerPoints)
 {
     auto img = static_cast<cv::Mat*>(imgHandle);
     std::vector<cv::Point2f> corners;
     corners.resize(patternHeight * patternWidth);
     bool found = false;
-    if (cv::findChessboardCorners(*img, cv::Size(patternWidth, patternHeight), corners,
-        CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE | CV_CALIB_CB_FAST_CHECK))
+
+    if (img->rows * img->cols > 360000) {
+        cv::Mat resized;
+        cv::resize(*img, resized, cv::Size(), 0.3333333, 0.3333333);
+        found = cv::findChessboardCorners(resized, cv::Size(patternWidth, patternHeight), corners,
+            CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE | CV_CALIB_CB_FAST_CHECK);
+        for (auto& pt : corners) {
+            pt = pt * 3;
+        }
+    }
+    else {
+        found = cv::findChessboardCorners(*img, cv::Size(patternWidth, patternHeight), corners,
+            CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE | CV_CALIB_CB_FAST_CHECK);
+    }
+
+    if (found)
     {
         found = true;
         cv::Mat grey;
